@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Copyright 2022 yqy
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<Configuration status="WARN" monitorInterval="1000">
+
+    <Properties>
+        <!-- 配置日志文件输出目录 -->
+        <Property name="LOG_HOME">${sys:logPath:-logs}</Property>
+    </Properties>
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} %L %msg%n"/>
+        </Console>
+        <RollingRandomAccessFile name="serverLog"
+                                 fileName="${LOG_HOME}/server.log"
+                                 filePattern="${LOG_HOME}/server/$${date:yyyy-MM}/%d{yyyy-MM-dd}-$i.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} %L %msg%n"/>
+            <Filters>
+                <ThresholdFilter level="error" onMatch="deny" onMismatch="neutral"/>
+                <ThresholdFilter level="debug" onMatch="accept" onMismatch="deny"/>
+            </Filters>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="7"/>
+        </RollingRandomAccessFile>
+        <RollingRandomAccessFile name="serverErrorLog"
+                                 fileName="${LOG_HOME}/error.log"
+                                 filePattern="${LOG_HOME}/server-error/$${date:yyyy-MM}/%d{yyyy-MM-dd}-$i.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} %L %msg%n"/>
+            <Filters>
+                <ThresholdFilter level="error" onMatch="accept" onMismatch="deny"/>
+            </Filters>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="7"/>
+        </RollingRandomAccessFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="com.yqy" level="debug" additivity="false">
+<!--            <appender-ref ref="serverLog"/>-->
+<!--            <appender-ref ref="serverErrorLog"/>-->
+            <appender-ref ref="console"/>
+        </Logger>
+        <Root level="error">
+        </Root>
+    </Loggers>
+
+</Configuration>
