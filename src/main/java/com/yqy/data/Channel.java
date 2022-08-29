@@ -224,7 +224,7 @@ public class Channel {
         }
         try {
             SocketChannel target = SocketChannel.open();
-            String bind = config.get("bind", null);
+            String bind = config.get("bind", "0.0.0.0");
             target.bind(new InetSocketAddress(bind, 0));
             target.configureBlocking(false);
             target.connect(new InetSocketAddress(targetAddress.getResolvedAddress(), targetAddress.getDstPort()));
