@@ -225,7 +225,7 @@ public class SocketHandler implements Handler, Runnable {
             recv += readBytes;
             totalRecvBytes += recv;
         } catch (IOException ignore) {
-            LOGGER.error("id({}) error occurs when read socket;get closed", id, ignore);
+            LOGGER.error("id({}) error occurs when read socket;get closed", id);
             error = true;
         } finally {
             if (error) {

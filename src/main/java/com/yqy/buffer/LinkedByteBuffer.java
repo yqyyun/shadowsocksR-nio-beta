@@ -29,12 +29,6 @@ public class LinkedByteBuffer {
     class Node {
         byte[] buffer;
         Node next;
-
-        @Override
-        public String toString() {
-            return  "blen=" + ((buffer == null) ? "null" : buffer.length) +
-                    " -> " + next;
-        }
     }
 
     private Node head;
@@ -86,16 +80,11 @@ public class LinkedByteBuffer {
     }
 
     public void add(ByteBuffer buffer) {
-//        System.out.println("before add : " + toString());
         Objects.requireNonNull(buffer);
         add(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit()));
-//        System.out.println("after add : " + toString());
     }
 
     public void addFirst(byte[] buf) {
-        // TODO BUG ,考虑尾结点变化
-        //before addFirst : LinkedByteBuffer{head=blen=null -> null, tail=blen=null -> null, size=0, byteSize=0}
-        //after addFirst : LinkedByteBuffer{head=blen=null -> blen=57 -> null, tail=blen=null -> blen=57 -> null, size=1,
         Objects.requireNonNull(buf);
         size++;
         byteSize += buf.length;
@@ -103,16 +92,15 @@ public class LinkedByteBuffer {
         node.buffer = buf;
         node.next = head.next;
         head.next =node;
+        // bug fixed; bug: removeFirst throw NullPointerException
         if (tail == head) {
             tail = node;
         }
     }
 
     public void addFirst(ByteBuffer buffer) {
-//        System.out.println("before addFirst : " + toString());
         Objects.requireNonNull(buffer);
         addFirst(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit()));
-//        System.out.println("after addFirst : " + toString());
     }
 
     public byte[] getBytes(int index) {
@@ -155,14 +143,9 @@ public class LinkedByteBuffer {
     }
 
     public ByteBuffer removeFirst() {
-//        System.out.println("before removeFirst : " + toString());
         ByteBuffer res;
-        try {
             if (size > 0) {
                 size--;
-                if (head.next == null) {
-                    System.out.println("===========================================NULL LLLLLLLLLLLLLLLLLL");
-                }
                 byteSize -= head.next.buffer.length;
                 res = ByteBuffer.wrap(head.next.buffer);
                 head.next = head.next.next;
@@ -171,9 +154,6 @@ public class LinkedByteBuffer {
                 }
                 return res;
             }
-        } finally {
-//            System.out.println("after removeFirst : " + toString());
-        }
         return null;
     }
 
@@ -190,16 +170,6 @@ public class LinkedByteBuffer {
 
     public int getByteSize() {
         return byteSize;
-    }
-
-    @Override
-    public String toString() {
-        return "LinkedByteBuffer{" +
-                "head=" + head +
-                ", tail=" + tail +
-                ", size=" + size +
-                ", byteSize=" + byteSize +
-                '}';
     }
 
     public static void main(String[] args) {

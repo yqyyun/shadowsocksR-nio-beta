@@ -165,7 +165,7 @@ public class Channel {
     }
 
     public void leftInitProcess() {
-        LOGGER.debug("left init Process id({})", id);
+//        LOGGER.debug("left init Process id({})", id);
         if (leftHandler.isClosed()) {
             close();
             return;
@@ -246,15 +246,11 @@ public class Channel {
 
             });
             if (input.hasRemaining()) {
-                try {
-                    rightHandler.getWriter().write(input);
-                    if (input.hasRemaining()) {
-                        leftToRightBuffer.add(input);
-                    }
-                    rightHandler.startWrite();
-                } catch (Throwable e) {
-                    LOGGER.debug("id({}) has remaining error ", id, e);
+                rightHandler.getWriter().write(input);
+                if (input.hasRemaining()) {
+                    leftToRightBuffer.add(input);
                 }
+                rightHandler.startWrite();
             }
             leftHandler.onReadComplete(() -> leftStreamProcess());
             rightHandler.onReadComplete(() -> rightStreamProcess());
@@ -272,9 +268,7 @@ public class Channel {
     private void writeToSocket(SocketHandler to, LinkedByteBuffer fromToBuffer) {
         to.onWriteComplete(() -> {
             if (fromToBuffer.getSize() > 0) {
-                ByteBuffer buffer = fromToBuffer.getByteBuffer(0);
-                fromToBuffer.removeFirst();
-//                ByteBuffer buffer = fromToBuffer.removeFirst();
+                ByteBuffer buffer = fromToBuffer.removeFirst();
                 to.getWriter().write(buffer);
                 if (buffer.hasRemaining()) {
                     fromToBuffer.addFirst(buffer);
@@ -286,7 +280,7 @@ public class Channel {
     }
 
     public void leftStreamProcess() {
-        LOGGER.debug("id({}) {} left stream process", id, targetAddress);
+//        LOGGER.debug("id({}) {} left stream process", id, targetAddress);
         if (!open) {
             return;
         }
@@ -295,16 +289,13 @@ public class Channel {
                 close();
                 return;
             }
-            // TODO BUG
             ByteBuffer input = leftHandler.getReader().readAll();
             if (input == null) {
                 return;
             }
             input = processLeft(input);
             leftToRightBuffer.add(input);
-            input = leftToRightBuffer.getByteBuffer(0);
-            leftToRightBuffer.removeFirst();
-//            input = leftToRightBuffer.removeFirst();
+            input = leftToRightBuffer.removeFirst();
             rightHandler.getWriter().write(input);
             if (input.hasRemaining()) {
                 leftToRightBuffer.addFirst(input);
@@ -317,7 +308,7 @@ public class Channel {
     }
 
     public void rightStreamProcess() {
-        LOGGER.debug("id({}) {} right stream process", id, targetAddress);
+//        LOGGER.debug("id({}) {} right stream process", id, targetAddress);
         if (!open) {
             return;
         }
@@ -326,19 +317,14 @@ public class Channel {
                 close();
                 return;
             }
-            // TODO BUG
             ByteBuffer input = rightHandler.getReader().readAll();
             if (input == null) {
                 return;
             }
             input = processRight(input);
+            // BUG fixed; bug: data may be lost, so that some web page can't be open normally
             rightToLeftBuffer.add(input);
-            input = rightToLeftBuffer.getByteBuffer(0);
-            rightToLeftBuffer.removeFirst();
-//            System.out.println( id + "==================================" + rightToLeftBuffer.getSize());
-//            System.out.println(id + "==================================" + rightToLeftBuffer.getByteSize());
-
-//            input = rightToLeftBuffer.removeFirst();
+            input = rightToLeftBuffer.removeFirst();
             leftHandler.getWriter().write(input);
             if (input.hasRemaining()) {
                 rightToLeftBuffer.addFirst(input);
@@ -366,7 +352,6 @@ public class Channel {
             leftHandler.startWrite();
         }
         input = protocolDecryptedMessage.data;
-//        LOGGER.debug("left data: {}", Arrays.toString(input.array()));
         return input;
     }
 
