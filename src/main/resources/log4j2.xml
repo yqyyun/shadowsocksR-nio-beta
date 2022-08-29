@@ -56,10 +56,10 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="com.yqy" level="debug" additivity="false">
+        <Logger name="com.yqy" level="info" additivity="false">
             <appender-ref ref="serverLog"/>
             <appender-ref ref="serverErrorLog"/>
-            <appender-ref ref="console"/>
+<!--            <appender-ref ref="console"/>-->
         </Logger>
         <Root level="error">
         </Root>
