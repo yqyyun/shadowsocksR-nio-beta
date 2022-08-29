@@ -24,6 +24,7 @@ import com.yqy.buffer.LinkedByteBuffer;
 import com.yqy.config.Configuration;
 import com.yqy.encrypto.*;
 import com.yqy.handler.ClosedHandlerException;
+import com.yqy.handler.SafeCloseable;
 import com.yqy.handler.SimpleDnsResolver;
 import com.yqy.handler.SocketHandler;
 import com.yqy.loop.EventLoop;
@@ -54,7 +55,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author yqy
  * @date 2022/8/3 12:48
  */
-public class Channel {
+public class Channel extends SafeCloseable {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -87,10 +88,6 @@ public class Channel {
     private TargetAddress targetAddress;
 
     private TargetAddress requestAddress;
-
-    private boolean open = true;
-
-    private final Object closeLock = new Object();
 
     private final LinkedByteBuffer leftToRightBuffer = new LinkedByteBuffer();
 
@@ -370,20 +367,15 @@ public class Channel {
 
     }
 
-    public void close() {
-        synchronized (closeLock) {
-            if (!open) {
-                return;
-            }
-            open = false;
-            if (leftHandler != null) {
-                leftHandler.close();
-            }
-            if (rightHandler != null) {
-                rightHandler.close();
-            }
-            cleanup();
+    @Override
+    protected void implClose() {
+        if (leftHandler != null) {
+            leftHandler.close();
         }
+        if (rightHandler != null) {
+            rightHandler.close();
+        }
+        cleanup();
     }
 
     public static void main(String[] args) throws IOException {

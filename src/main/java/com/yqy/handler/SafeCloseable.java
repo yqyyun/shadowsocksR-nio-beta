@@ -33,7 +33,7 @@ public abstract class SafeCloseable {
             if (!open) {
                 return;
             }
-            open = true;
+            open = false;
             implClose();
         }
     }

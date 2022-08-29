@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author yqy
  * @date 2022/7/25 10:28
  */
-public class SocketHandler implements Handler, Runnable {
+public class SocketHandler extends SafeCloseable implements Handler, Runnable {
 
     protected static final Logger LOGGER = LogManager.getLogger();
 
@@ -85,10 +85,6 @@ public class SocketHandler implements Handler, Runnable {
     private Runnable onReadCompleteTask;
 
     private Runnable onWriteCompleteTask;
-
-    private volatile boolean open = true;
-
-    private final Object closeLock = new Object();
 
     private long totalRecvBytes = 0;
 
@@ -431,18 +427,12 @@ public class SocketHandler implements Handler, Runnable {
     }
 
     @Override
-    public void close() {
-        synchronized (closeLock) {
-            if (!open) {
-                return;
-            }
-            try {
-                open = false;
-                eventLoop.getKey(socket).attach(null);
-                socket.close();
-            } catch (IOException e) {
-                LOGGER.error("Failed to close the socket!", e);
-            }
+    protected void implClose() {
+        try {
+            eventLoop.getKey(socket).attach(null);
+            socket.close();
+        } catch (IOException e) {
+            LOGGER.error("Failed to close the socket!", e);
         }
     }
 }
