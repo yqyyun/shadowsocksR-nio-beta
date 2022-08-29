@@ -184,15 +184,15 @@ public class AuthChainA extends AuthBase {
         byte[] data = randomData(bufSize, buf, lastClientHash, randomClient);
         builder.add(userKey);
         builder.add(packInt(packId));
-        byte[] macKey = builder.getBuffers();
+        byte[] macKey = builder.getBytes();
         builder.clear();
         int length = bufSize ^ unpackShort(slice(lastClientHash, 14, 16));
         builder.add(packShort((short) length));
         builder.add(data);
-        data = builder.getBuffers();
+        data = builder.getBytes();
         lastClientHash = hmac(macKey, data);
         builder.add(slice(lastClientHash, 0, 2));
-        data = builder.getBuffers();
+        data = builder.getBytes();
         packId++;
         return data;
     }
@@ -204,15 +204,15 @@ public class AuthChainA extends AuthBase {
         byte[] data = randomData(bufSize, buf, lastServerHash, randomServer);
         builder.add(userKey);
         builder.add(packInt(packId));
-        byte[] macKey = builder.getBuffers();
+        byte[] macKey = builder.getBytes();
         builder.clear();
         int length = bufSize ^ unpackShort(Arrays.copyOfRange(lastServerHash, 14, 16));
         builder.add(packShort((short) length));
         builder.add(data);
-        data = builder.getBuffers();
+        data = builder.getBytes();
         lastServerHash = hmac(macKey, data);
         builder.add(Arrays.copyOfRange(lastServerHash, 0, 2));
-        data = builder.getBuffers();
+        data = builder.getBytes();
         packId++;
         return data;
     }
@@ -226,13 +226,13 @@ public class AuthChainA extends AuthBase {
         LinkedByteBuffer macKeyBuilder = new LinkedByteBuffer();
         macKeyBuilder.add(serverInfo.getIv());
         macKeyBuilder.add(serverInfo.getKey());
-        byte[] macKey = macKeyBuilder.getBuffers();
+        byte[] macKey = macKeyBuilder.getBytes();
         LinkedByteBuffer checkHeadBuilder = new LinkedByteBuffer();
         byte[] checkHead = rndBytes(4);
         lastClientHash = hmac(macKey, checkHead);
         checkHeadBuilder.add(checkHead);
         checkHeadBuilder.add(slice(lastClientHash, 0, 8));
-        checkHead = checkHeadBuilder.getBuffers();
+        checkHead = checkHeadBuilder.getBytes();
         byte[] uid = rndBytes(4);
         String protocolParam = serverInfo.getProtocolParam();
         if (protocolParam.contains(":")) {
@@ -253,7 +253,7 @@ public class AuthChainA extends AuthBase {
         try {
             encryptor = new Encryptor(
                     "aes-128-cbc",
-                    checkHeadBuilder.getBuffers(),
+                    checkHeadBuilder.getBytes(),
                     new byte[16],
                     false
             );
@@ -261,20 +261,20 @@ public class AuthChainA extends AuthBase {
             ignore.printStackTrace();
             System.out.println("error======================");
         }
-        data = encryptor.encrypt(builder.getBuffers());
+        data = encryptor.encrypt(builder.getBytes());
         builder.clear();
         int uidInt = unpackInt(uid) ^ unpackInt(slice(lastClientHash, 8, 12));
         uid = packInt(uidInt);
         builder.add(uid);
         builder.add(data);
-        lastServerHash = hmac(userKey, builder.getBuffers());
+        lastServerHash = hmac(userKey, builder.getBytes());
         builder.addFirst(checkHead);
         builder.add(slice(lastServerHash, 0, 4));
         LinkedByteBuffer keyBuilder = new LinkedByteBuffer();
         keyBuilder.add(base64(userKey));
         keyBuilder.add(base64(lastClientHash));
         try {
-            byte[] key = keyBuilder.getBuffers();
+            byte[] key = keyBuilder.getBytes();
             this.encryptor = new Encryptor(
                     "rc4",
                     key,
@@ -288,7 +288,7 @@ public class AuthChainA extends AuthBase {
         } catch (EncryptorException | DecryptorException ignore) {
         }
         builder.add(packClientData(buf));
-        return builder.getBuffers();
+        return builder.getBytes();
     }
 
 
@@ -342,7 +342,7 @@ public class AuthChainA extends AuthBase {
 //        }
 //        builder.add(packClientData(slice(buf, i, bufSize)));
         builder.add(packClientData(buf));
-        return builder.getBuffers();
+        return builder.getBytes();
     }
 
     public ProtocolDecryptedMessage serverPostDecrypt(byte[] buf) {
@@ -353,7 +353,7 @@ public class AuthChainA extends AuthBase {
         LinkedByteBuffer recvBuilder = new LinkedByteBuffer();
         recvBuilder.add(recvBuf);
         recvBuilder.add(buf);
-        recvBuf = recvBuilder.getBuffers();
+        recvBuf = recvBuilder.getBytes();
         boolean sendBack = false;
 
         if (!hasRecvHeader) {
@@ -364,7 +364,7 @@ public class AuthChainA extends AuthBase {
                 LinkedByteBuffer mackKeyBuilder = new LinkedByteBuffer();
                 mackKeyBuilder.add(serverInfo.getRecv_iv());
                 mackKeyBuilder.add(serverInfo.getKey());
-                md5Data = hmac(mackKeyBuilder.getBuffers(), recvBuf, 0, 4);
+                md5Data = hmac(mackKeyBuilder.getBytes(), recvBuf, 0, 4);
                 if (!Arrays.equals(
                         //recvLen = 12
                         slice(md5Data, 0, recvLen - 4),
@@ -416,7 +416,7 @@ public class AuthChainA extends AuthBase {
             try {
                 Decryptor decryptor = new Decryptor(
                         "aes-128-cbc",
-                        keyBuilder.getBuffers(),
+                        keyBuilder.getBytes(),
                         new byte[16],
                         false);
                 //TODO
@@ -440,7 +440,7 @@ public class AuthChainA extends AuthBase {
                 this.connectionId = connId;
             } else {
                 LOGGER.info("{}: auth fail, data {}",
-                        noCompatibleMethod, hexString(outBuilder.getBuffers()));
+                        noCompatibleMethod, hexString(outBuilder.getBytes()));
                 return notMatchReturn(wrap(recvBuf));
             }
             // onRecvAuthData(utcTime)
@@ -448,7 +448,7 @@ public class AuthChainA extends AuthBase {
             keyBuilder.add(base64(userKey));
             keyBuilder.add(base64(lastClientHash));
             try {
-                byte[] key = keyBuilder.getBuffers();
+                byte[] key = keyBuilder.getBytes();
                 this.decryptor = new Decryptor(
                         "rc4",
                         key,
@@ -517,14 +517,14 @@ public class AuthChainA extends AuthBase {
         if (outBuilder.getByteSize() > 0) {
             serverInfo.getData().update(userId, clientId, connectionId);
         }
-        return new ProtocolDecryptedMessage(wrap(outBuilder.getBuffers()), sendBack);
+        return new ProtocolDecryptedMessage(wrap(outBuilder.getBytes()), sendBack);
     }
 
     private byte[] toBytes(byte[] a, byte[] b) {
         LinkedByteBuffer keyBuilder = new LinkedByteBuffer();
         keyBuilder.add(a);
         keyBuilder.add(b);
-        return keyBuilder.getBuffers();
+        return keyBuilder.getBytes();
     }
 
     public byte[] clientPostDecrypt(byte[] buf) {
@@ -534,7 +534,7 @@ public class AuthChainA extends AuthBase {
         LinkedByteBuffer recvBuilder = new LinkedByteBuffer();
         recvBuilder.add(recvBuf);
         recvBuilder.add(buf);
-        recvBuf = recvBuilder.getBuffers();
+        recvBuf = recvBuilder.getBytes();
         LinkedByteBuffer outBuilder = new LinkedByteBuffer();
         while (recvBuf.length > 4) {
             byte[] macKey = toBytes(userKey, packInt(recvId));
@@ -577,7 +577,7 @@ public class AuthChainA extends AuthBase {
             recvId++;
             recvBuf = Arrays.copyOfRange(recvBuf, length + 4, recvBuf.length);
         }
-        return outBuilder.getBuffers();
+        return outBuilder.getBytes();
     }
 
     public byte[] serverPreEncrypt(byte[] buf) {
@@ -594,7 +594,7 @@ public class AuthChainA extends AuthBase {
             builder.add(packShort((short) tcpMss));
             builder.add(buf);
             unitLen = tcpMss - clientOverhead;
-            buf = builder.getBuffers();
+            buf = builder.getBytes();
             builder.clear();
         }
         while (buf.length > unitLen) {
@@ -602,7 +602,7 @@ public class AuthChainA extends AuthBase {
             buf = slice(buf, unitLen, buf.length);
         }
         builder.add(packServerData(buf));
-        return builder.getBuffers();
+        return builder.getBytes();
     }
 
     public byte[] clientUdpPreEncrypt(byte[] buf) {
@@ -632,7 +632,7 @@ public class AuthChainA extends AuthBase {
         builder.add(base64(md5data));
         try {
             Encryptor encryptor = new Encryptor(
-                    "rcr", builder.getBuffers(),
+                    "rcr", builder.getBytes(),
                     null, false);
             byte[] out = encryptor.encrypt(buf);
             builder.clear();
@@ -643,7 +643,7 @@ public class AuthChainA extends AuthBase {
         builder.add(authData);
         builder.add(uid);
         builder.add(slice(hmac(userKey, buf), 0, 1));
-        return builder.getBuffers();
+        return builder.getBytes();
     }
 
     public byte[] clientUdpPostDecrypt(byte[] buf) {
@@ -665,7 +665,7 @@ public class AuthChainA extends AuthBase {
 
         try {
             Decryptor decryptor = new Decryptor("rc4",
-                    builder.getBuffers(), null, false);
+                    builder.getBytes(), null, false);
             return decryptor.decrypt(Arrays.copyOfRange(buf, 0, bufLen - 8 - rndLen));
         } catch (DecryptorException e) {
         }
@@ -691,7 +691,7 @@ public class AuthChainA extends AuthBase {
         builder.add(base64(md5data));
         try {
             Encryptor encryptor = new Encryptor("rc4",
-                    builder.getBuffers(), null, false);
+                    builder.getBytes(), null, false);
             builder.clear();
             builder.add(encryptor.encrypt(buf));
         } catch (EncryptorException e) {
@@ -699,7 +699,7 @@ public class AuthChainA extends AuthBase {
         builder.add(rndBytes(rndLen));
         builder.add(authData);
         builder.add(slice(hmac(userKey, buf), 0, 1));
-        return builder.getBuffers();
+        return builder.getBytes();
     }
 
     public byte[] serverUdpPostDecrypt(byte[] buf) {
@@ -729,12 +729,12 @@ public class AuthChainA extends AuthBase {
         builder.add(base64(md5data));
         try {
             Decryptor decryptor = new Decryptor("rc4",
-                    builder.getBuffers(), null, false);
+                    builder.getBytes(), null, false);
             builder.clear();
             builder.add(decryptor.decrypt(slice(buf, 0, bufLen - 8 - rndLen)));
         } catch (DecryptorException e) {
         }
-        return builder.getBuffers();
+        return builder.getBytes();
     }
 
     public void dispose() {

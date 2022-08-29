@@ -20,6 +20,7 @@ import com.yqy.bean.ObfsServerDecodedMessage;
 import com.yqy.bean.ProtocolDecryptedMessage;
 import com.yqy.bean.ServerInfo;
 import com.yqy.bean.TargetAddress;
+import com.yqy.buffer.LinkedByteBuffer;
 import com.yqy.config.Configuration;
 import com.yqy.encrypto.*;
 import com.yqy.handler.ClosedHandlerException;
@@ -91,6 +92,10 @@ public class Channel {
 
     private final Object closeLock = new Object();
 
+    private final LinkedByteBuffer leftToRightBuffer = new LinkedByteBuffer();
+
+    private final LinkedByteBuffer rightToLeftBuffer = new LinkedByteBuffer();
+
     public Channel(SocketHandler leftHandler, EventLoop eventLoop, EventLoopGroup group, Configuration config) {
         this(leftHandler, null, eventLoop, group, config);
     }
@@ -155,16 +160,17 @@ public class Channel {
         SocketHandler leftHandler = this.leftHandler;
         if (open) {
             leftHandler.onReadComplete(() -> leftInitProcess());
+            leftHandler.startRead();
         }
     }
 
     public void leftInitProcess() {
-//        LOGGER.debug("left init Process id({})", id);
+        LOGGER.debug("left init Process id({})", id);
         if (leftHandler.isClosed()) {
             close();
             return;
         }
-        if (leftHandler.getInputRemaing() < methodInfo.getIvLen() + 30) {
+        if (leftHandler.getTotalRecvBytes() < methodInfo.getIvLen()) {
             return;
         }
         ByteBuffer input = leftHandler.input();
@@ -242,6 +248,9 @@ public class Channel {
             if (input.hasRemaining()) {
                 try {
                     rightHandler.getWriter().write(input);
+                    if (input.hasRemaining()) {
+                        leftToRightBuffer.add(input);
+                    }
                     rightHandler.startWrite();
                 } catch (Throwable e) {
                     LOGGER.debug("id({}) has remaining error ", id, e);
@@ -249,14 +258,35 @@ public class Channel {
             }
             leftHandler.onReadComplete(() -> leftStreamProcess());
             rightHandler.onReadComplete(() -> rightStreamProcess());
+            leftHandler.startRead();
+            rightHandler.startRead();
+
+            writeToSocket(leftHandler, rightToLeftBuffer);
+            writeToSocket(rightHandler, leftToRightBuffer);
         } catch (IOException | ClosedHandlerException e) {
             LOGGER.error("something wrong in the id({}) channel left init process;get closed anyway", id, e);
             close();
         }
     }
 
+    private void writeToSocket(SocketHandler to, LinkedByteBuffer fromToBuffer) {
+        to.onWriteComplete(() -> {
+            if (fromToBuffer.getSize() > 0) {
+                ByteBuffer buffer = fromToBuffer.getByteBuffer(0);
+                fromToBuffer.removeFirst();
+//                ByteBuffer buffer = fromToBuffer.removeFirst();
+                to.getWriter().write(buffer);
+                if (buffer.hasRemaining()) {
+                    fromToBuffer.addFirst(buffer);
+                }
+                to.startWrite();
+            }
+        });
+        to.startWrite();
+    }
+
     public void leftStreamProcess() {
-//        LOGGER.debug("id({}) {} left stream process", id, targetAddress);
+        LOGGER.debug("id({}) {} left stream process", id, targetAddress);
         if (!open) {
             return;
         }
@@ -271,7 +301,14 @@ public class Channel {
                 return;
             }
             input = processLeft(input);
+            leftToRightBuffer.add(input);
+            input = leftToRightBuffer.getByteBuffer(0);
+            leftToRightBuffer.removeFirst();
+//            input = leftToRightBuffer.removeFirst();
             rightHandler.getWriter().write(input);
+            if (input.hasRemaining()) {
+                leftToRightBuffer.addFirst(input);
+            }
             rightHandler.startWrite();
         } catch (Throwable e) {
             LOGGER.error("id({}) something wrong in the channel left Stream process;get closed anyway", id, e);
@@ -280,7 +317,7 @@ public class Channel {
     }
 
     public void rightStreamProcess() {
-//        LOGGER.debug("id({}) {} right stream process", id, targetAddress);
+        LOGGER.debug("id({}) {} right stream process", id, targetAddress);
         if (!open) {
             return;
         }
@@ -295,7 +332,17 @@ public class Channel {
                 return;
             }
             input = processRight(input);
+            rightToLeftBuffer.add(input);
+            input = rightToLeftBuffer.getByteBuffer(0);
+            rightToLeftBuffer.removeFirst();
+//            System.out.println( id + "==================================" + rightToLeftBuffer.getSize());
+//            System.out.println(id + "==================================" + rightToLeftBuffer.getByteSize());
+
+//            input = rightToLeftBuffer.removeFirst();
             leftHandler.getWriter().write(input);
+            if (input.hasRemaining()) {
+                rightToLeftBuffer.addFirst(input);
+            }
             leftHandler.startWrite();
         } catch (Throwable e) {
             LOGGER.error("id({}) something wrong in the channel right Stream process;get closed anyway", id, e);

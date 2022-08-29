@@ -533,6 +533,7 @@ public class EventLoop implements Runnable {
             // prematurely returned , optimize gc
             return runTask;
         }
+        // Connect和rw事件执行顺序
         readTaskQueue.forEach(r -> {
             readTaskQueue.remove(r);
             r.run();

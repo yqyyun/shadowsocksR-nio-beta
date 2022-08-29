@@ -49,7 +49,34 @@ public class SocketHandler implements Handler, Runnable {
 
     private volatile SelectionKey key;
 
-    public static final int BUF_SIZE = 1024 * 1024;
+    public static final String BUF_SIZE_KEY = "com.yqy.sockethandler.bufSize";
+    public static final int BUF_SIZE;
+
+    static {
+        String strVal = System.getProperty(BUF_SIZE_KEY);
+        int val = 4 * 1024;
+        try {
+            if (strVal != null && !"null".equals(strVal)) {
+                char unit = strVal.charAt(strVal.length() - 1);
+                if (unit == 'k' || unit == 'm') {
+                    val = Integer.parseInt(strVal.substring(0, strVal.length() - 1));
+                    if (unit == 'k') {
+                        val = 1024 * val;
+                    } else {
+                        val = 1024 * 1024 * val;
+                    }
+                } else if (unit >= '0' && unit <= '9'){
+                    val = Integer.parseInt(strVal);
+                }
+                else {
+                    throw new IllegalArgumentException(BUF_SIZE_KEY +" unknown unit, unit only be 'k', 'm', or nothing!");
+                }
+            }
+        } catch (NumberFormatException ignore) {
+        }
+        BUF_SIZE = val;
+        LOGGER.debug("{} : {}", BUF_SIZE_KEY, BUF_SIZE);
+    }
 
     public final ByteBuffer input = ByteBuffer.allocate(BUF_SIZE);
 
@@ -62,6 +89,8 @@ public class SocketHandler implements Handler, Runnable {
     private volatile boolean open = true;
 
     private final Object closeLock = new Object();
+
+    private long totalRecvBytes = 0;
 
 
     public SocketHandler(EventLoop eventLoop, SocketChannel socket, EventLoopGroup group) {
@@ -194,6 +223,7 @@ public class SocketHandler implements Handler, Runnable {
                 return;
             }
             recv += readBytes;
+            totalRecvBytes += recv;
         } catch (IOException ignore) {
             LOGGER.error("id({}) error occurs when read socket;get closed", id, ignore);
             error = true;
@@ -209,14 +239,14 @@ public class SocketHandler implements Handler, Runnable {
         // lim = cap, pos is wait to writing so have to change it
         checkState();
         ByteBuffer data = output;
-        data.flip();
-        if (!data.hasRemaining()) {
-            removeWriteOps();
-            return;
-        }
-        int writeBytes = 0;
         boolean error = false;
+        int writeBytes = 0;
         try {
+            data.flip();
+            if (!data.hasRemaining()) {
+                removeWriteOps();
+                return;
+            }
             writeBytes = socket.write(data);
         } catch (IOException ignore) {
             LOGGER.error("id({}) failed to write data to socket!; then closed", id);
@@ -227,6 +257,8 @@ public class SocketHandler implements Handler, Runnable {
             }
             if (!data.hasRemaining()) {
                 removeWriteOps();
+                data.clear();
+            } else {
                 data.compact();
             }
         }
@@ -259,12 +291,16 @@ public class SocketHandler implements Handler, Runnable {
      */
     public void output(ByteBuffer data) {
         checkState();
-        int avail = output.remaining();
-        int len = data.remaining();
-        if (avail < len) {
-            throw new BufferOverflowException();
+        int p = data.position();
+        int l = data.limit();
+        int rl  = p + output.remaining();
+        if (rl > l) {
+            rl = l;
         }
+        data.limit(rl);
         output.put(data);
+        data.position(rl);
+        data.limit(l);
     }
 
 
@@ -305,12 +341,6 @@ public class SocketHandler implements Handler, Runnable {
             outer.checkState();
             int remaining = src.remaining();
             outer.output(src);
-            eventLoop.attachTask(socket, SelectionKey.OP_WRITE, () -> {
-                outer.write();
-                if (onReadCompleteTask != null) {
-                    onReadCompleteTask.run();
-                }
-            });
             return remaining - src.remaining();
         }
     };
@@ -327,21 +357,11 @@ public class SocketHandler implements Handler, Runnable {
 
     public void onReadComplete(Runnable r) {
         checkState();
-        Runnable task = () -> {
-            read();
-            r.run();
-        };
-        eventLoop.attachTask(socket, SelectionKey.OP_READ, task);
         onReadCompleteTask = r;
     }
 
     public void onWriteComplete(Runnable r) {
         checkState();
-        Runnable writeTask = () -> {
-            write();
-            r.run();
-        };
-        eventLoop.attachTask(socket, SelectionKey.OP_WRITE, writeTask);
         onWriteCompleteTask = r;
     }
 
@@ -368,6 +388,10 @@ public class SocketHandler implements Handler, Runnable {
 
     public int getInputRemaing() {
         return input.remaining();
+    }
+
+    public long getTotalRecvBytes() {
+        return totalRecvBytes;
     }
 
     public int getOutputRemaing() {

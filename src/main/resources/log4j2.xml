@@ -28,7 +28,7 @@
         </Console>
         <RollingRandomAccessFile name="serverLog"
                                  fileName="${LOG_HOME}/server.log"
-                                 filePattern="${LOG_HOME}/server/$${date:yyyy-MM}/%d{yyyy-MM-dd}-$i.log">
+                                 filePattern="${LOG_HOME}/server/$${date:yyyy-MM}/%d{yyyy-MM-dd}-%i.log">
             <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} %L %msg%n"/>
             <Filters>
                 <ThresholdFilter level="error" onMatch="deny" onMismatch="neutral"/>
@@ -42,7 +42,7 @@
         </RollingRandomAccessFile>
         <RollingRandomAccessFile name="serverErrorLog"
                                  fileName="${LOG_HOME}/error.log"
-                                 filePattern="${LOG_HOME}/server-error/$${date:yyyy-MM}/%d{yyyy-MM-dd}-$i.log">
+                                 filePattern="${LOG_HOME}/server-error/$${date:yyyy-MM}/%d{yyyy-MM-dd}-%i.log">
             <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} %L %msg%n"/>
             <Filters>
                 <ThresholdFilter level="error" onMatch="accept" onMismatch="deny"/>
@@ -57,8 +57,8 @@
 
     <Loggers>
         <Logger name="com.yqy" level="debug" additivity="false">
-<!--            <appender-ref ref="serverLog"/>-->
-<!--            <appender-ref ref="serverErrorLog"/>-->
+            <appender-ref ref="serverLog"/>
+            <appender-ref ref="serverErrorLog"/>
             <appender-ref ref="console"/>
         </Logger>
         <Root level="error">

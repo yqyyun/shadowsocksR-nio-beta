@@ -48,6 +48,7 @@ public class Server {
             LOGGER.error("fail to load configuration, system exist  with 1");
             System.exit(1);
         }
+        processSystemProperty(config);
         Service service = new Service(config);
         EventLoopGroup group = service.getEventLoopGroup();
         EventLoop bossLoop = service.getBossLoop();
@@ -60,6 +61,10 @@ public class Server {
             e.printStackTrace();
         }
         service.startService();
+    }
+
+    private static void processSystemProperty(Configuration config) {
+        System.setProperty(SocketHandler.BUF_SIZE_KEY, config.get(SocketHandler.BUF_SIZE_KEY, "null"));
     }
 
     private static void startTcpRelay(Configuration config, EventLoopGroup group, EventLoop bossLoop) throws IOException {

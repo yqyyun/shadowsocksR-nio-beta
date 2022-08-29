@@ -29,6 +29,12 @@ public class LinkedByteBuffer {
     class Node {
         byte[] buffer;
         Node next;
+
+        @Override
+        public String toString() {
+            return  "blen=" + ((buffer == null) ? "null" : buffer.length) +
+                    " -> " + next;
+        }
     }
 
     private Node head;
@@ -79,7 +85,17 @@ public class LinkedByteBuffer {
         tail = node;
     }
 
+    public void add(ByteBuffer buffer) {
+//        System.out.println("before add : " + toString());
+        Objects.requireNonNull(buffer);
+        add(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit()));
+//        System.out.println("after add : " + toString());
+    }
+
     public void addFirst(byte[] buf) {
+        // TODO BUG ,考虑尾结点变化
+        //before addFirst : LinkedByteBuffer{head=blen=null -> null, tail=blen=null -> null, size=0, byteSize=0}
+        //after addFirst : LinkedByteBuffer{head=blen=null -> blen=57 -> null, tail=blen=null -> blen=57 -> null, size=1,
         Objects.requireNonNull(buf);
         size++;
         byteSize += buf.length;
@@ -87,9 +103,19 @@ public class LinkedByteBuffer {
         node.buffer = buf;
         node.next = head.next;
         head.next =node;
+        if (tail == head) {
+            tail = node;
+        }
     }
 
-    public byte[] getBuffer(int index) {
+    public void addFirst(ByteBuffer buffer) {
+//        System.out.println("before addFirst : " + toString());
+        Objects.requireNonNull(buffer);
+        addFirst(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit()));
+//        System.out.println("after addFirst : " + toString());
+    }
+
+    public byte[] getBytes(int index) {
         if (index < 0 || index >= size) {
             throw new IndexOutOfBoundsException();
         }
@@ -102,7 +128,7 @@ public class LinkedByteBuffer {
         return null;
     }
 
-    public byte[] getBuffers() {
+    public byte[] getBytes() {
         byte[] ret = new byte[byteSize];
         int offset = 0;
         for (Node p = head.next; p != null; p = p.next) {
@@ -114,6 +140,11 @@ public class LinkedByteBuffer {
         return ret;
     }
 
+    public ByteBuffer getByteBuffer(int index) {
+        assert getBytes(index) != null;
+        return ByteBuffer.wrap(getBytes(index));
+    }
+
     public ByteBuffer[] getByteBuffers() {
         ByteBuffer[] ret = new ByteBuffer[size];
         int i = 0;
@@ -121,6 +152,29 @@ public class LinkedByteBuffer {
             ret[i] = ByteBuffer.wrap(p.buffer);
         }
         return ret;
+    }
+
+    public ByteBuffer removeFirst() {
+//        System.out.println("before removeFirst : " + toString());
+        ByteBuffer res;
+        try {
+            if (size > 0) {
+                size--;
+                if (head.next == null) {
+                    System.out.println("===========================================NULL LLLLLLLLLLLLLLLLLL");
+                }
+                byteSize -= head.next.buffer.length;
+                res = ByteBuffer.wrap(head.next.buffer);
+                head.next = head.next.next;
+                if (size == 0) {
+                    tail = head;
+                }
+                return res;
+            }
+        } finally {
+//            System.out.println("after removeFirst : " + toString());
+        }
+        return null;
     }
 
     public void clear() {
@@ -138,24 +192,39 @@ public class LinkedByteBuffer {
         return byteSize;
     }
 
+    @Override
+    public String toString() {
+        return "LinkedByteBuffer{" +
+                "head=" + head +
+                ", tail=" + tail +
+                ", size=" + size +
+                ", byteSize=" + byteSize +
+                '}';
+    }
+
     public static void main(String[] args) {
         LinkedByteBuffer lst = new LinkedByteBuffer();
+        lst.addFirst(new byte[]{0});
+        System.out.println(lst.removeFirst().get());
         lst.add(new byte[]{1});
         lst.add(new byte[]{2});
         lst.add(new byte[]{3});
-        System.out.println(Arrays.toString(lst.getBuffers()));
+        System.out.println(lst.removeFirst().get());
+        System.out.println(lst.removeFirst().get());
+        System.out.println(Arrays.toString(lst.getBytes()));
         lst.addFirst(new byte[]{4});
-        System.out.println(Arrays.toString(lst.getBuffers()));
+        System.out.println(Arrays.toString(lst.getBytes()));
         lst.insert(0, new byte[]{5});
         lst.insert(3, new byte[]{6});
         lst.insert(6, new byte[]{7});
-        System.out.println(Arrays.toString(lst.getBuffers()));
+        System.out.println(Arrays.toString(lst.getBytes()));
         System.out.println(Arrays.toString(lst.getByteBuffers()));
         System.out.println(lst.getSize());
         System.out.println(lst.getByteSize());
-        System.out.println(lst.getBuffer(0)[0]);
-        System.out.println(lst.getBuffer(3)[0]);
-        System.out.println(lst.getBuffer(7)[0]);
+        System.out.println(lst.getBytes(0)[0]);
+        System.out.println(lst.getBytes(3)[0]);
+//        System.out.println(lst.getBytes(7)[0]);
+
     }
 
 }

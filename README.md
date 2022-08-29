@@ -41,6 +41,8 @@ tar -zxvf shadowsocksR-nio-beta-1.0-beta-bin.tar.gz
 ```
 Set `JAVA_HOME` in `bin/env.sh` , if you don't set `JAVA_HOME` in your system-wide environment variable.
 
+>提示：在使用jdk11以上jdk时，如果开启zgc垃圾收集器，可以带来性能提升
+
 ## Start Server
 
 Before you start server,  you should check up the configuration file in `conf/config.properties`.
@@ -56,7 +58,7 @@ cd shadowsocksR-nio-beta-1.0-beta/bin
 > 本项目没有提供客户端，所以你需要安装对应的**shadowsocksr**客户端软件才可使用，
 
 **Note**: **this project still has some bugs, so just for study**.
-> 注意：该项目目前还存在已知bug，比如背压bug，以后可能会考虑解决这个问题，但是目前应该仅用于学习研究。
+> 注意：该项目目前还存在已知bug，以后可能会考虑解决这个问题，但是目前应该仅用于学习研究。
 
 Ok! That is it.
 
