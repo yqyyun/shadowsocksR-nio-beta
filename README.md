@@ -3,7 +3,7 @@
 **ShadowsocksR-nio**is a secured SOCKS5 proxy for encrypted communications. It's developed using **Java NIO**.
 
 ## prerequisite
-basic;
+basic:
 - linux
 - jdk1.8+
 
