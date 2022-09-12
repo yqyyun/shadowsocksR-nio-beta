@@ -72,7 +72,7 @@ public class EventLoop implements Runnable {
 
     private final Queue<Runnable> acceptTaskQueue = new ConcurrentLinkedQueue<>();
 
-    // TODO 来自其它线程提交的任务, 考虑能否使用工作窃取算法
+    // TODO
     private final Queue<Runnable> shareIOTaskQueue = new ConcurrentLinkedQueue<>();
 
     private static final Runnable EMPTY_TASK = () -> {
